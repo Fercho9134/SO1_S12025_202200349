@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  fastapi-app:
+    build: .
+    container_name: log_container  # Nombre del contenedor
+    ports:
+      - "8000:8000"  # Mapear puerto 8000 del contenedor al 8000 de la máquina host
+    volumes:
+      - ./logs:/logs  # Volumen para almacenar los logs
+    environment:
+      - PYTHONUNBUFFERED=1  # Deshabilitar el buffering de stdout/stderr
