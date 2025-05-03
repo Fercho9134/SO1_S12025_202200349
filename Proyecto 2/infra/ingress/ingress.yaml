@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: weather-ingress
+  namespace: weather-tweets
+  # Las anotaciones (si necesitas alguna específica de Nginx) van aquí, bajo metadata
+  # annotations:
+  #   nginx.ingress.kubernetes.io/rewrite-target: /
+
+# El campo ingressClassName va AQUI, directamente bajo 'spec'
+spec:
+  ingressClassName: nginx # <-- ¡Este campo va aquí!
+
+  rules:
+  - http: # OMITIMOS la línea 'host:' para acceder por la IP pública asignada a Nginx
+      paths:
+      - path: /input
+        pathType: Prefix # O 'Exact'
+        backend:
+          service:
+            name: rust-api # Nombre del Service de tu aplicación Rust
+            port:
+              number: 80 # Puerto del Service Rust
+
+  # Opcional: Configuración TLS si usas HTTPS
+  # tls:
+  # - secretName: tu-secret-tls
+  #   hosts:
+  #   - tudominio.com

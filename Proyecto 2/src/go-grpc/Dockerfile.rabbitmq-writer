@@ -1,0 +1,20 @@
+# Etapa de construcción
+FROM golang:1.24.1-alpine as builder
+
+WORKDIR /workspace
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o rabbitmq-writer ./cmd/rabbitmq-writer
+
+# Etapa de ejecución
+FROM alpine:3.19
+WORKDIR /app
+
+COPY --from=builder /workspace/rabbitmq-writer .
+COPY --from=builder /workspace/internal/proto /app/internal/proto
+
+EXPOSE 50052
+CMD ["./rabbitmq-writer"]

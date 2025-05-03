@@ -1,0 +1,38 @@
+# Etapa de construcción
+FROM golang:1.24.1 as builder
+
+WORKDIR /workspace
+
+# Instalar dependencias de compilación para librdkafka
+RUN apt-get update && \
+    apt-get install -y \
+    librdkafka-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar primero los archivos de módulos para optimizar caché
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copiar el resto del código
+COPY . .
+
+# Construir el binario (ahora con CGO habilitado)
+RUN CGO_ENABLED=1 GOOS=linux go build -o kafka-writer ./cmd/kafka-writer
+
+# Etapa de ejecución
+FROM debian:bookworm-slim
+WORKDIR /app
+
+# Instalar solo las dependencias de runtime para librdkafka
+RUN apt-get update && \
+    apt-get install -y \
+    librdkafka-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar el binario y archivos necesarios
+COPY --from=builder /workspace/kafka-writer .
+COPY --from=builder /workspace/internal/proto /app/internal/proto
+
+EXPOSE 50051
+CMD ["./kafka-writer"]

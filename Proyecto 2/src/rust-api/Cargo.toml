@@ -1,0 +1,15 @@
+[package]
+name = "rust-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.0"  # Framework web
+serde = { version = "1.0", features = ["derive"] }  # Serialización
+serde_json = "1.0"  # Manejo de JSON
+tokio = { version = "1.0", features = ["full"] }  # Runtime async
+reqwest = { version = "0.11", features = ["json"] }  # Cliente HTTP
+config = "0.13"  # Manejo de configuración
+log = "0.4"  # Logging
+env_logger = "0.10"  # Logger
+thiserror = "1.0"  # Manejo de errores

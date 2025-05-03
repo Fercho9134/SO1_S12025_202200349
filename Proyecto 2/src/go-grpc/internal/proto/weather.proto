@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package weather;
+option go_package = "servidor-api-go/internal/proto";
+
+service WeatherService {
+  rpc PublishToRabbitMQ (WeatherRequest) returns (WeatherResponse);
+  rpc PublishToKafka (WeatherRequest) returns (WeatherResponse);
+}
+
+message WeatherRequest {
+  string description = 1;
+  string country = 2;
+  string weather = 3;
+}
+
+message WeatherResponse {
+  bool success = 1;
+  string message = 2;
+}

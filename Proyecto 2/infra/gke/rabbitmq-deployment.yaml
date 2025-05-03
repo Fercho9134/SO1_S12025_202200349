@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq # Nombre del StatefulSet (debe coincidir con el Service para resolución DNS)
+  namespace: weather-tweets
+spec:
+  replicas: 1 # Número de réplicas. Empieza con 1.
+  selector:
+    matchLabels:
+      app: rabbitmq # Etiqueta para seleccionar pods
+  serviceName: rabbitmq # Nombre del Service Headless (debe coincidir con metadata.name)
+  template:
+    metadata:
+      labels:
+        app: rabbitmq # Etiqueta para los pods
+    spec:
+      containers:
+      - name: rabbitmq
+        image: fercho913/rabbitmq:3-management
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5672
+          name: amqp
+        - containerPort: 15672
+          name: http-management
+
+        env: # <--- Variables de entorno
+
+        - name: POD_NAME # Definimos una nueva variable de entorno POD_NAME
+          valueFrom:     # Su valor viene de...
+            fieldRef:    # ... un campo del pod
+              fieldPath: metadata.name 
+        # =======================================================
+
+        - name: RABBITMQ_NODENAME
+          value: "rabbit@$(POD_NAME)" 
+        # =============================================================
+
+        # === Configuración para permitir acceso remoto de usuario guest ===
+        - name: RABBITMQ_NODE_IP_ADDRESS
+          value: "0.0.0.0" 
+
+        # Opcional: Configuración para persistencia (ruta por defecto de datos en la imagen oficial)
+        volumeMounts:
+        - name: rabbitmq-data # Nombre del Volume Mount
+          mountPath: /var/lib/rabbitmq # Directorio donde RabbitMQ guarda los datos
+
+
+  # Configuración de la Persistencia usando PersistentVolumeClaim (PVC)
+  volumeClaimTemplates:
+  - metadata:
+      name: rabbitmq-data # Nombre del PVC template (debe coincidir con volumeMounts.name)
+    spec:
+      accessModes: [ "ReadWriteOnce" ] # El disco puede ser montado por un solo nodo
+      storageClassName: standard # <--- Usamos StorageClass 'standard' (HDD)
+      resources:
+        requests:
+          storage: 5Gi # Tamaño del disco solicitado
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq # Nombre del Service al que tus aplicaciones se conectarán (rabbitmq:5672)
+  namespace: weather-tweets
+spec:
+  ports:
+  - port: 5672 # Puerto del Service (AMQP)
+    targetPort: 5672 # Puerto del contenedor (AMQP)
+    protocol: TCP
+    name: amqp # Nombre del puerto AMQP
+  - port: 15672 # Puerto del Service (Management UI)
+    targetPort: 15672 # Puerto del contenedor (Management UI)
+    protocol: TCP
+    name: http-management
+  selector:
+    app: rabbitmq
+  type: ClusterIP

@@ -1,0 +1,90 @@
+# YAML para Zookeeper
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: weather-tweets
+spec:
+  replicas: 1 # Una réplica simple para pruebas
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+      - name: zookeeper
+        image: bitnami/zookeeper:latest # Imagen de Zookeeper
+        ports:
+        - containerPort: 2181 # Puerto interno del contenedor
+        imagePullPolicy: IfNotPresent # O Always, si prefieres
+        env:
+        - name: ALLOW_ANONYMOUS_LOGIN
+          value: "yes" # Configuración para permitir login anónimo
+        # No se necesitan montajes de volumen para persistencia en este ejemplo simple
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper # Este nombre (zookeeper) es crucial para que Kafka lo encuentre
+  namespace: weather-tweets
+spec:
+  selector:
+    app: zookeeper # Debe coincidir con la etiqueta del Pod
+  ports:
+  - protocol: TCP
+    port: 2181 # Puerto del Service al que otros pods se conectarán (ej: Kafka)
+    targetPort: 2181 # Puerto del contenedor al que el Service redirigirá
+
+---
+# YAML para Kafka 3.7 (basado en Zookeeper)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: weather-tweets
+spec:
+  replicas: 1 # Una réplica simple para pruebas
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+      - name: kafka
+        image: bitnami/kafka:3.7 # Imagen de Kafka 3.7 (Zookeeper-based)
+        ports:
+        - containerPort: 9092 # Puerto interno del contenedor
+        imagePullPolicy: IfNotPresent # O Always, si prefieres
+        env:
+        - name: KAFKA_CFG_ZOOKEEPER_CONNECT
+          value: "zookeeper:2181" # Nombre del Service de Zookeeper + puerto
+        - name: ALLOW_PLAINTEXT_LISTENER
+          value: "yes" # Permitir conexiones PLAINTEXT
+        - name: KAFKA_CFG_ADVERTISED_LISTENERS
+          # Esto es importante en K8s: debe ser el nombre del Service de Kafka
+          value: "PLAINTEXT://kafka:9092"
+        - name: KAFKA_CFG_NUM_PARTITIONS
+          value: "1"
+        - name: KAFKA_ENABLE_KRAFT
+          value: "no" # Deshabilitar KRaft explícitamente
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka # Este nombre (kafka) es crucial para que tus Go Writers lo encuentren
+  namespace: weather-tweets
+spec:
+  selector:
+    app: kafka # Debe coincidir con la etiqueta del Pod
+  ports:
+  - protocol: TCP
+    port: 9092 # Puerto del Service al que otros pods se conectarán (ej: Go Writers)
+    targetPort: 9092 # Puerto del contenedor de Kafka

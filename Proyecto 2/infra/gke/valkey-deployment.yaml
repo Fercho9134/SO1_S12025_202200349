@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: valkey
+  namespace: weather-tweets
+spec:
+  replicas: 1 # Puedes cambiar a 2+ si necesitas alta disponibilidad
+  selector:
+    matchLabels:
+      app: valkey
+  serviceName: valkey # Debe coincidir con el nombre del Service Headless
+  template:
+    metadata:
+      labels:
+        app: valkey
+    spec:
+      securityContext:
+        fsGroup: 1001 # Grupo de seguridad para el contenedor
+
+      containers:
+      - name: valkey
+        image: bitnami/valkey:latest # Imagen oficial de Bitnami Valkey
+        ports:
+        - containerPort: 6379 # Puerto estándar de Valkey
+          name: valkey
+        env:
+        - name: ALLOW_EMPTY_PASSWORD # Simplifica la conexión para pruebas
+          value: "yes"
+        # Si quieres configurar una contraseña (más seguro):
+        # - name: VALKEY_PASSWORD
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: valkey-password # Nombre del Secret (debes crearlo antes)
+        #       key: valkey-password # Clave dentro del Secret
+        volumeMounts:
+        - name: data # Nombre del Volume Mount (debe coincidir con volumeClaimTemplates.metadata.name)
+          mountPath: /bitnami/valkey/data # Directorio donde Valkey guarda los datos persistentes
+
+  # Configuración de la Persistencia usando PersistentVolumeClaim (PVC)
+  volumeClaimTemplates:
+  - metadata:
+      name: data # Nombre del PVC template (debe coincidir con volumeMounts.name)
+    spec:
+      accessModes: [ "ReadWriteOnce" ] 
+      storageClassName: standard-rwo 
+                                 
+      resources:
+        requests:
+          storage: 5Gi # Tamaño del disco solicitado 
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: valkey # (valkey:6379)
+  namespace: weather-tweets
+spec:
+  ports:
+  - port: 6379 
+    targetPort: 6379 
+    protocol: TCP
+  selector:
+    app: valkey 

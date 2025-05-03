@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress 
+  namespace: weather-tweets 
+  annotations:
+    # Clave: Indica a Nginx que reescriba la URL
+    nginx.ingress.kubernetes.io/rewrite-target: /$2 
+spec:
+  ingressClassName: nginx # Asegúrate que sea el nombre correcto
+  rules:
+  - http:
+      paths:
+      # Modifica el path para capturar el resto de la URL después de /grafana
+      - path: /grafana(/|$)(.*) 
+ 
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 80

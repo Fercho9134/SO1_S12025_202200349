@@ -1,0 +1,27 @@
+# Etapa de construcción
+FROM golang:1.24.1-alpine as builder
+
+WORKDIR /workspace
+
+# Copiar primero los archivos de módulos para optimizar caché
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copiar el resto del código
+COPY . .
+
+# Construir el binario
+RUN CGO_ENABLED=0 GOOS=linux go build -o entrypoint ./cmd/entrypoint
+
+# Etapa de ejecución
+FROM alpine:3.19
+WORKDIR /app
+
+# Copiar el binario y archivos necesarios
+COPY --from=builder /workspace/entrypoint .
+COPY --from=builder /workspace/internal/proto /app/internal/proto
+
+# Puerto expuesto
+EXPOSE 8080 50050
+
+ENTRYPOINT ["./entrypoint"]

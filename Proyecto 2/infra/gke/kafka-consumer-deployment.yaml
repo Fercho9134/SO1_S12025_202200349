@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-consumer
+  namespace: weather-tweets 
+spec:
+  replicas: 1 
+              
+  selector:
+    matchLabels:
+      app: kafka-consumer
+  template:
+    metadata:
+      labels:
+        app: kafka-consumer
+    spec:
+      containers:
+      - name: kafka-consumer
+        image: fercho913/kafka-consumer:latest
+        imagePullPolicy: Always # Siempre intenta descargar la última imagen
+        ports:
+        - containerPort: 8080 # Puerto del Health Check
+          name: http-health
+
+        env: # <--- Variables de entorno necesarias para la aplicación Go
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092" # <--- Dirección del Service de Kafka
+                              
+        - name: REDIS_ADDR
+          value: "redis:6379" # <--- Dirección del Service de Redis
+                               
+        - name: KAFKA_CONSUMER_GROUP_ID
+          value: "weather-consumer-group" # <--- Group ID para el consumidor de Kafka
+                                        # Todas las réplicas de este deployment DEBEN usar el MISMO Group ID.
+
+        livenessProbe:
+          httpGet:
+            path: "/health" # Endpoint del Health Check
+            port: 8080    # Puerto del Health Check
+          initialDelaySeconds: 10 # Espera antes del primer check
+          periodSeconds: 5      # Frecuencia de los checks
+          timeoutSeconds: 3     # Timeout para cada check
+          successThreshold: 1
+          failureThreshold: 3 # Si falla 3 veces, Kubernetes reinicia el pod
+
+        readinessProbe:
+          httpGet:
+            path: "/health"
+            port: 8080
+          initialDelaySeconds: 5 
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3 

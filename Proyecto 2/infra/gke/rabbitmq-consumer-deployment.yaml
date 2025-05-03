@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-consumer
+  namespace: weather-tweets # Asegúrate de que sea el namespace correcto
+spec:
+  replicas: 1 
+              # RabbitMQ distribuirá mensajes de la cola a las réplicas que consumen la misma cola.
+  selector:
+    matchLabels:
+      app: rabbitmq-consumer
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-consumer
+    spec:
+      containers:
+      - name: rabbitmq-consumer # Nombre del contenedor
+        image: fercho913/rabbitmq-consumer:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080 # Puerto del Health Check
+          name: http-health
+
+        env: # <--- Variables de entorno necesarias para la aplicación Go
+        - name: RABBITMQ_URL
+          value: "amqp://rabbitmq:5672" # <--- Dirección del Service de RabbitMQ 
+                                     
+        - name: VALKEY_ADDR
+          value: "valkey:6379" # <--- Dirección del Service de Valkey 
+                               
+
+        # Configuración de Health Checks (para que Kubernetes sepa si el pod está saludable)
+        livenessProbe:
+          httpGet:
+            path: "/health" # Endpoint del Health Check en tu aplicación
+            port: 8080    # Puerto del Health Check
+          initialDelaySeconds: 10 # Espera antes del primer check
+          periodSeconds: 5      # Frecuencia de los checks
+          timeoutSeconds: 3     # Timeout para cada check
+          successThreshold: 1
+          failureThreshold: 3 # Si falla 3 veces, Kubernetes reinicia el pod
+
+        readinessProbe:
+          httpGet:
+            path: "/health"
+            port: 8080
+          initialDelaySeconds: 5 # Espera antes de que el pod se considere Ready
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3 # Si falla 3 veces, el pod se marca como NotReady (no recibe tráfico si tuviera Service)
+

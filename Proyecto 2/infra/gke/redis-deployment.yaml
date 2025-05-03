@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: weather-tweets
+spec:
+  replicas: 1 # Puedes cambiar a 2+ si necesitas alta disponibilidad, pero empieza con 1
+  selector:
+    matchLabels:
+      app: redis
+  serviceName: redis # Debe coincidir con el nombre del Service Headless
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      securityContext:
+        fsGroup: 1001 # Grupo de seguridad para el contenedor
+
+
+      containers:
+      - name: redis
+        image: bitnami/redis:latest # Imagen oficial de Bitnami Redis
+        ports:
+        - containerPort: 6379 # Puerto estándar de Redis
+          name: redis
+        env:
+        - name: ALLOW_EMPTY_PASSWORD # Simplifica la conexión para pruebas
+          value: "yes"
+        volumeMounts:
+        - name: data # Nombre del Volume Mount (debe coincidir con volumeClaimTemplates.metadata.name)
+          mountPath: /bitnami/redis/data # Directorio donde Redis guarda los datos persistentes
+
+  # Configuración de la Persistencia usando PersistentVolumeClaim (PVC)
+  volumeClaimTemplates:
+  - metadata:
+      name: data # Nombre del PVC template (debe coincidir con volumeMounts.name)
+    spec:
+      accessModes: [ "ReadWriteOnce" ] # El disco puede ser montado por un solo nodo
+      storageClassName: standard-rwo 
+                                 
+      resources:
+        requests:
+          storage: 5Gi # Tamaño del disco solicitado 
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis #(redis:6379)
+  namespace: weather-tweets
+spec:
+  ports:
+  - port: 6379 # Puerto del Service
+    targetPort: 6379 # Puerto del contenedor
+    protocol: TCP
+  selector:
+    app: redis # Debe coincidir con la etiqueta del Pod en el StatefulSet

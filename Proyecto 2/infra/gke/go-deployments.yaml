@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-entrypoint
+  namespace: weather-tweets
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-entrypoint
+  template:
+    metadata:
+      labels:
+        app: go-entrypoint
+    spec:
+      containers:
+      - name: go-entrypoint-combined
+        image: fercho913/go-entrypoint:latest # Tu imagen de Docker Hub
+        ports:
+        - containerPort: 8080
+        - containerPort: 50050
+        imagePullPolicy: Always
+        env:
+        - name: KAFKA_WRITER_ADDR
+          value: "go-kafka-writer:50051"
+        - name: RABBITMQ_WRITER_ADDR
+          value: "go-rabbitmq-writer:50052"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-entrypoint
+  namespace: weather-tweets
+spec:
+  selector:
+    app: go-entrypoint
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 8080
+  - name: grpc
+    protocol: TCP
+    port: 50050
+    targetPort: 50050
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-kafka-writer
+  namespace: weather-tweets
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-kafka-writer
+  template:
+    metadata:
+      labels:
+        app: go-kafka-writer
+    spec:
+      containers:
+      - name: writer
+        image: fercho913/go-kafka-writer:latest # Tu imagen de Docker Hub
+        ports:
+        - containerPort: 50051
+        imagePullPolicy: Always
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092" # Nombre del Service de Kafka en el cluster
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-kafka-writer
+  namespace: weather-tweets
+spec:
+  selector:
+    app: go-kafka-writer
+  ports:
+    - protocol: TCP
+      port: 50051
+      targetPort: 50051
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-rabbitmq-writer
+  namespace: weather-tweets
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-rabbitmq-writer
+  template:
+    metadata:
+      labels:
+        app: go-rabbitmq-writer
+    spec:
+      containers:
+      - name: writer
+        image: fercho913/go-rabbitmq-writer:latest # Tu imagen de Docker Hub
+        ports:
+        - containerPort: 50052
+        imagePullPolicy: Always
+        env:
+        - name: RABBITMQ_URL
+          value: "amqp://rabbitmq:5672" # URL de conexión a RabbitMQ
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-rabbitmq-writer
+  namespace: weather-tweets
+spec:
+  selector:
+    app: go-rabbitmq-writer
+  ports:
+    - protocol: TCP
+      port: 50052
+      targetPort: 50052
