@@ -1,1 +1,0 @@
-savedcmd_/home/fernando/Escritorio/Proyecto_SO1/modulo_kernel/modules.order := {   echo /home/fernando/Escritorio/Proyecto_SO1/modulo_kernel/sysinfo_module.o; :; } > /home/fernando/Escritorio/Proyecto_SO1/modulo_kernel/modules.order

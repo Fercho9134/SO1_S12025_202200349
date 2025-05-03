@@ -1,1 +1,0 @@
-savedcmd_/home/fernando/Escritorio/Proyecto_SO1/modulo_kernel/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/fernando/Escritorio/Proyecto_SO1/modulo_kernel/Module.symvers -T /home/fernando/Escritorio/Proyecto_SO1/modulo_kernel/modules.order -i Module.symvers -e 
